@@ -142,21 +142,11 @@ void setup() {
 void loop() {
     defineDelay();
     getRelayData();
-    
-    if(rel_stat == 0){
-      digitalWrite(RELAY_PIN,HIGH);
-    }
-    else if(rel_stat == 1){
-      digitalWrite(RELAY_PIN,LOW);
-      power = hlw8012.getApparentPower();
-      voltage        = hlw8012.getVoltage();
-      current        = hlw8012.getCurrent()*1000;
-
-    printData();
+          
+    Serial.print("Relay Status : "); Serial.println(rel_stat);
 
     // When not using interrupts we have to manually switch to current or voltage monitor
     // This means that every time we get into the conditional we only update one of them
     // while the other will return the cached value.
     hlw8012.toggleMode();
-    }
 }
