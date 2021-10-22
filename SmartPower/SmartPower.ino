@@ -18,8 +18,8 @@
   #define CF_PIN          21
   
   // Wifi Configuration
-  #define WIFISSID    "vaaivoo"
-  #define PASSWORD    "kawakibengg"
+  #define WIFISSID    "DXB"
+  #define PASSWORD    "telkom2021"
   
   // Apps Configuration
   #define ACCESSKEY       "ec181439c172f36b:322dbade46fce459"
@@ -40,9 +40,12 @@
   
   //Sensor variables
   float power;
+  float active_power;
+  float power_factor;
   float current;
   float voltage;
   int rel_stat;
+  int timeout = 2000;
   
   //Delay variables
   static unsigned long last;
@@ -84,31 +87,41 @@
   }
   
   void sendData(){
+      if(rel_stat == 1){
       dat_dev.add("power", power);
       dat_dev.add("voltage_rms", voltage);
       dat_dev.add("current_rms", current);
+
+      // When not using interrupts we have to manually switch to current or voltage monitor
+      // This means that every time we get into the conditional we only update one of them
+      // while the other will return the cached value.
+      hlw8012.toggleMode();
       
       // Send from buffer to Antares
       dat_dev.send(applicationName, dat_device);
+      }
   }
   
   void getRelayData(){
       rel_dev.get(applicationName, rel_device);
       rel_stat = rel_dev.getInt("relay");
+      timeout = rel_dev.getInt("timeout");
   }
   
   void defineDelay(){
       last = millis();
-      if ((millis() - last) > 2000) {
+      if ((millis() - last) > timeout) {
       last = millis();
       }
   }
   
   void printData(){
+    if(rel_stat == 1){
+    Serial.print("[HLW] Power (VA)          : "); Serial.println(power);
     Serial.print("[HLW] Voltage (V)         : "); Serial.println(voltage);
     Serial.print("[HLW] Current (A)         : "); Serial.println(current);
-    Serial.print("[HLW] Power (VA)          : "); Serial.println(power);
     Serial.println();
+    }
   }
 
   void getHLWData(){
@@ -117,7 +130,9 @@
       }
     else if(rel_stat == 1){
       digitalWrite(RELAY_PIN,LOW);
-      power = hlw8012.getApparentPower();
+      active_power   = hlw8012.getActivePower();
+      power_factor   = 100 * hlw8012.getPowerFactor();
+      power          = hlw8012.getApparentPower(); 
       voltage        = hlw8012.getVoltage();
       current        = hlw8012.getCurrent()*1000;
       }
@@ -177,9 +192,4 @@ void loop() {
     getHLWData();
     printData();
     sendData();
-
-    // When not using interrupts we have to manually switch to current or voltage monitor
-    // This means that every time we get into the conditional we only update one of them
-    // while the other will return the cached value.
-    hlw8012.toggleMode();
 }
