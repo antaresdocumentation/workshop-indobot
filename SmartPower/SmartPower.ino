@@ -1,44 +1,44 @@
-// Import Library
+/* Import Library */
 #include <AntaresESP32HTTP.h>
 #include <Arduino.h>
 #include "HLW8012.h"
 
-// Configuration
+/* Configuration */
 
-// Debug
+/* Debug */
 #define is_debug    true
 
-// Baudrate Config
+/* Baudrate Config */
 #define SERIAL_BAUDRATE 115200
 
-// GPIO Config
+/* GPIO Config */
 #define RELAY_PIN       22
 #define SEL_PIN         16
 #define CF1_PIN         17
 #define CF_PIN          21
 
-// Wifi Configuration
+/* Wifi Configuration */
 #define WIFISSID    "DXB"
 #define PASSWORD    "telkom2021"
 
-// Apps Configuration
+/* Apps Configuration */
 #define ACCESSKEY       "ec181439c172f36b:322dbade46fce459"
 #define applicationName "Indobot"
 #define dat_device    "Database"
 #define rel_device    "Relay"
 
-// Set SEL_PIN to HIGH to sample current
-// This is the case for Itead's Sonoff POW, where a
-// the SEL_PIN drives a transistor that pulls down
-// the SEL pin in the HLW8012 when closed
+/* Set SEL_PIN to HIGH to sample current */
+/* This is the case for Itead's Sonoff POW, where a
+   the SEL_PIN drives a transistor that pulls down
+   the SEL pin in the HLW8012 when closed */
 #define CURRENT_MODE    HIGH
 
-// These are the nominal values for the resistors in the circuit
+/* These are the nominal values for the resistors in the circuit */
 #define CURRENT_RESISTOR                0.001
 #define VOLTAGE_RESISTOR_UPSTREAM       ( 5 * 470000 ) // Real: 2280k
 #define VOLTAGE_RESISTOR_DOWNSTREAM     ( 1000 ) // Real 1.009k
 
-//Sensor variables
+/* Sensor variables */
 float power;
 float active_power;
 float power_factor;
@@ -46,17 +46,16 @@ float current;
 float voltage;
 int rel_stat;
 
-//Delay variables
+/* Delay variables */
 unsigned long rel_timeout;
 bool timer_done;
 
-// Initialization
+/* Initialization */
 AntaresESP32HTTP dat_dev(ACCESSKEY);
 AntaresESP32HTTP rel_dev(ACCESSKEY);
 HLW8012 hlw8012;
 
-// Procedure
-
+/* Procedure */
 void defineDelay(){
   static unsigned long last = millis();
   if ((millis() - last) > rel_timeout) {
@@ -69,6 +68,8 @@ void getRelayData(){
   rel_dev.get(applicationName, rel_device);
   rel_stat = rel_dev.getInt("relay");
   rel_timeout = rel_dev.getInt("timeout");
+  if(rel_timeout < 2000)
+    rel_timeout = 2000;
 }
 
 void getHLWData(){
@@ -82,7 +83,7 @@ void getHLWData(){
     power_factor   = 100 * hlw8012.getPowerFactor();
     voltage        = hlw8012.getVoltage();
     current        = hlw8012.getCurrent()*1000;
-    }
+  }
 }
 
 void printData(){
@@ -96,39 +97,38 @@ void sendData(){
   dat_dev.add("voltage_rms", voltage);
   dat_dev.add("current_rms", current);
   
-  // When not using interrupts we have to manually switch to current or voltage monitor
-  // This means that every time we get into the conditional we only update one of them
-  // while the other will return the cached value.
+  /* When not using interrupts we have to manually switch to current or voltage monitor
+    This means that every time we get into the conditional we only update one of them
+    while the other will return the cached value. */
   hlw8012.toggleMode();        
   
-  // Send from buffer to Antares
+  /* Send from buffer to Antares */
   dat_dev.send(applicationName, dat_device);
 }
     
 void setup() {
-// General
-// Setup Serial
+/* Setup Serial */
   Serial.begin(SERIAL_BAUDRATE);
   
-// Setup Pin
+/* Setup Pin */
   pinMode     (RELAY_PIN,OUTPUT);
   digitalWrite(RELAY_PIN,HIGH);
   
-// Antares
-// Setup Power Database
+/* Antares */
+/* Setup Power Database */
   dat_dev.setDebug(is_debug);
   dat_dev.wifiConnection(WIFISSID,PASSWORD);
   
-// Setup Relay Database
+/* Setup Relay Database */
   rel_dev.setDebug(is_debug);
   rel_dev.wifiConnection(WIFISSID,PASSWORD); 
   
-// HLW8012
-  // Close the relay to switch on the load
+/* HLW8012 */
+  /* Close the relay to switch on the load */
   pinMode(RELAY_PIN, OUTPUT);
   digitalWrite(RELAY_PIN, LOW);
   
-// Initialize HLW8012
+/* Initialize HLW8012 */
   // void begin(unsigned char cf_pin, unsigned char cf1_pin, unsigned char sel_pin, unsigned char currentWhen = HIGH, bool use_interrupts = false, unsigned long pulse_timeout = PULSE_TIMEOUT);
   // * cf_pin, cf1_pin and sel_pin are GPIOs to the HLW8012 IC
   // * currentWhen is the value in sel_pin to select current sampling
@@ -141,15 +141,15 @@ void setup() {
   // * The VOLTAGE_RESISTOR_UPSTREAM are the 5 470kOhm resistors in the voltage divider that feeds the V2P pin in the HLW8012
   // * The VOLTAGE_RESISTOR_DOWNSTREAM is the 1kOhm resistor in the voltage divider that feeds the V2P pin in the HLW8012
   hlw8012.setResistors(CURRENT_RESISTOR, VOLTAGE_RESISTOR_UPSTREAM, VOLTAGE_RESISTOR_DOWNSTREAM);
-// Show default (as per datasheet) multipliers
+/* Show default (as per datasheet) multipliers */
   Serial.print("[HLW] Default current multiplier : "); Serial.println(hlw8012.getCurrentMultiplier());
   //_current_multiplier = ( 1000000.0 * 512 * V_REF / _current_resistor / 24.0 / F_OSC );
   Serial.print("[HLW] Default voltage multiplier : "); Serial.println(hlw8012.getVoltageMultiplier());
   //_voltage_multiplier = ( 1000000.0 * 512 * V_REF * _voltage_resistor / 2.0 / F_OSC );
   Serial.print("[HLW] Default power multiplier   : "); Serial.println(hlw8012.getPowerMultiplier());
   //_power_multiplier = ( 1000000.0 * 128 * V_REF * V_REF * _voltage_resistor / _current_resistor / 48.0 / F_OSC );
+  
   Serial.println();
-
   timer_done = false;
   rel_timeout = 2000;    
 
