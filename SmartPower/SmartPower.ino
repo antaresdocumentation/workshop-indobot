@@ -82,7 +82,7 @@ void getHLWData(){
     power          = hlw8012.getApparentPower();
     power_factor   = 100 * hlw8012.getPowerFactor();
     voltage        = hlw8012.getVoltage();
-    current        = hlw8012.getCurrent()*1000;
+    current        = hlw8012.getCurrent();
   }
 }
 
